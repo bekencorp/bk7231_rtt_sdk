@@ -521,7 +521,47 @@ void finsh_thread_entry(void *parameter)
     while (1)
     {
         ch = finsh_getchar();
+        
+        #if 1//CFG_SUPPORT_BKREG
+        if(((char)0x01 == ch) && (shell->line_position == 0)) {
+            shell->line[0] = ch;
+            shell->line_position++;
+            continue;
+        } else if(((char)0xe0 == ch) && (shell->line_position == 1)) {
+            shell->line[1] = ch;
+            shell->line_position++;
+            continue;
+        } else if(((char)0xfc == ch) && (shell->line_position == 2)) {
+            shell->line[2] = ch;
+            shell->line_position++;
+            continue;
+        } else {
+            char *inbuf = &shell->line[0];
+            rt_uint8_t *bp = &shell->line_position;
+            if(((char)0x01 == inbuf[0])
+                && ((char)0xe0 == inbuf[1])
+                && ((char)0xfc == inbuf[2])
+                && (*bp == 3))
+            {
+                int left = (int)ch, len = 4 + (int)ch;
+                inbuf[*bp] = ch;
+                (*bp)++;
+                
+                while(left--) {
+                    ch = finsh_getchar();
+                    inbuf[*bp] = ch;
+                    (*bp)++;
+                }
 
+                extern int bkreg_run_command(const char *content, int cnt);
+                bkreg_run_command(inbuf, len);
+                memset(inbuf, 0, len);
+                *bp = 0;
+                continue;
+            }
+            
+        }
+        #endif  // CFG_SUPPORT_BKREG
         /*
          * handle control key
          * up key  : 0x1b 0x5b 0x41

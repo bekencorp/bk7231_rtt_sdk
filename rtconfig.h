@@ -66,7 +66,7 @@
 #define FINSH_USING_MSH
 #define FINSH_USING_MSH_DEFAULT
 #define FINSH_USING_MSH_ONLY
-#define FINSH_ARG_MAX 10
+#define FINSH_ARG_MAX 15
 
 /* Device virtual file system */
 
