@@ -1138,6 +1138,13 @@ void rwnx_cal_set_txpwr_by_rate(INT32 rate, UINT32 test_mode)
 }
 
 #if CFG_SUPPORT_MANUAL_CALI
+struct cal_pwr_st {
+    UINT8 idx;
+    UINT8 mode;
+    UINT16 shift;
+};
+
+struct cal_pwr_st g_pwr_current = {16, EVM_DEFUALT_RATE, 0};
 void rwnx_cal_set_txpwr(UINT32 pwr_gain, UINT32 grate)
 {
     const PWR_REGS *pcfg;
@@ -1147,6 +1154,16 @@ void rwnx_cal_set_txpwr(UINT32 pwr_gain, UINT32 grate)
         return;
     }
 
+    g_pwr_current.idx = pwr_gain;
+    g_pwr_current.mode = grate;
+    
+    #if CFG_USE_TEMPERATURE_DETECT
+    pwr_gain = g_pwr_current.idx + g_pwr_current.shift;
+
+    if(pwr_gain > 32) {
+        pwr_gain = 32; 
+    }
+    #endif // CFG_USE_TEMPERATURE_DETECT
     if(grate == EVM_DEFUALT_B_RATE) {
     // for b
         pcfg = cfg_tab_b + pwr_gain;
@@ -1158,8 +1175,9 @@ void rwnx_cal_set_txpwr(UINT32 pwr_gain, UINT32 grate)
         return;
     }
 
-    os_printf("idx:%02d,r:%03d- pg:%02x, %01x, %01x, %01x, %01x, %01x\r\n", pwr_gain, grate,
-        pcfg->pregain, pcfg->regb_28_31, pcfg->regc_8_10,pcfg->regc_4_6, pcfg->regc_0_2, pcfg->rega_8_11);
+    if(pwr_gain > 32) {
+        pwr_gain = 32; 
+    }
 
     BK7011RCBEKEN.REG0x52->bits.TXPREGAIN = gtx_pre_gain = pcfg->pregain;
     bk7011_rc_val[21] = BK7011RCBEKEN.REG0x52->value;
@@ -1179,14 +1197,29 @@ void rwnx_cal_set_txpwr(UINT32 pwr_gain, UINT32 grate)
     bk7011_trx_val[12] = BK7011TRXONLY.REG0xC->value ;    
 }   
 
+#if CFG_USE_TEMPERATURE_DETECT
+void rwnx_cal_set_txpwr_by_tmpdetect(UINT16 shift)
+{
+    g_pwr_current.shift = shift;
+    if(shift)
+    {
+        os_printf("temd set pwr: idx:%d, rate:%d\r\n", g_pwr_current.idx + shift, g_pwr_current.mode);
+        rwnx_cal_set_txpwr(g_pwr_current.idx, g_pwr_current.mode);
+    }
+}  
+#endif  // CFG_USE_TEMPERATURE_DETECT
+
 void rwnx_cal_set_reg_mod_pa(UINT16 reg_mod, UINT16 reg_pa)
 {
     CHECK_OPERATE_RF_REG_IF_IN_SLEEP();
 
     gtx_dcorMod = (INT32)reg_mod,
     gtx_dcorPA = (INT32)reg_pa;
-    BK7011TRXONLY.REG0xB->bits.dcorMod30 = gtx_dcorMod;
-    BK7011TRXONLY.REG0xC->bits.dcorPA30 = gtx_dcorPA;    
+    BK7011TRX.REG0xB->bits.dcorMod30 = gtx_dcorMod;
+    CAL_WR_TRXREGS(0xB);
+    BK7011TRX.REG0xC->bits.dcorPA30 = gtx_dcorPA; 
+    CAL_WR_TRXREGS(0xC);
+  
     bk7011_trx_val[11] = BK7011TRXONLY.REG0xB->value;
     bk7011_trx_val[12] = BK7011TRXONLY.REG0xC->value; 
 
@@ -1203,6 +1236,7 @@ void rwnx_cal_do_temp_detect(UINT16 cur_val, UINT16 thre, UINT16 *last)
     if(tmp_pwr_ptr) 
     {
         rwnx_cal_set_reg_mod_pa(tmp_pwr_ptr->mod, tmp_pwr_ptr->pa);
+        rwnx_cal_set_txpwr_by_tmpdetect(tmp_pwr_ptr->pwr_idx_shift);
     }
 }
 #endif // CFG_USE_TEMPERATURE_DETECT
@@ -1645,13 +1679,9 @@ INT32 bk7011_cal_tx_output_power(INT32 *val)
     INT32 gold_index = 0;
     INT32 tssilow = 0;
     INT32 tssihigh = 0;
-    INT32 index;
+    INT32 index = 0;
     INT16 high, low, tx_fre_gain;
-
     INT32 cnt = 0;
-
-    //BK7011ADDAMAP.REG0x5->bits.vc40 = 0x1f;
-    //BK7011ADDA.REG0x5->value = BK7011ADDAMAP.REG0x5->value;
 
     // bk7011_rc_val[12]-16:20=7,    0x53479D40,   21 REG_0x52
     BK7011RCBEKEN.REG0x52->bits.TXPREGAIN = 7;
@@ -3720,6 +3750,11 @@ void flash_test(void)
     }
 }
 #endif
+
+void rwnx_cal_initial_calibration(void)
+{
+    rwnx_cal_set_txpwr(16, EVM_DEFUALT_RATE);
+}
 
 void sctrl_dpll_int_open(void);
 void calibration_main(void)

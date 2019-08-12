@@ -40,7 +40,7 @@ TEMP_DETECT_CONFIG_ST g_temp_detect_config;
 #if CFG_SUPPORT_ALIOS
 beken_thread_t  temp_detct_handle = NULL;
 #else
-xTaskHandle  temp_detct_handle = NULL;
+beken_thread_t  temp_detct_handle = NULL;
 #endif
 
 enum
@@ -319,13 +319,9 @@ static void temp_detect_polling_handler(void)
                     g_temp_detect_config.detect_thre);
 
     rwnx_cal_do_temp_detect(cur_val, thre, &g_temp_detect_config.last_detect_val);
-
-    #if 0 //(CFG_SOC_NAME != SOC_BK7231)
-	// bk7231u no need xtal cali
-    if(last_detect_val != g_temp_detect_config.last_detect_val)
-        manual_cal_do_xtal_cali(cur_val, &g_temp_detect_config.last_xtal_val, 
-            g_temp_detect_config.xtal_thre_val, g_temp_detect_config.xtal_init_val);
-    #endif // (CFG_SOC_NAME != SOC_BK7231)
+#if(CFG_SOC_NAME != SOC_BK7231)
+    manual_cal_do_xtal_cali(cur_val);
+#endif
 
     if(g_temp_detect_config.detect_intval_change == ADC_TMEP_DETECT_INTVAL_CHANGE) 
     {
@@ -351,19 +347,11 @@ static void temp_detect_main( beken_thread_arg_t data )
     tmp_detect_desc.p_Int_Handler = temp_detect_handler;   
     
     g_temp_detect_config.last_detect_val = (UINT32)(data);
-    g_temp_detect_config.inital_data = (UINT32)(data) + ADC_TMEP_DIST_INTIAL_VAL;        
+    g_temp_detect_config.inital_data = (UINT32)(data);        
     g_temp_detect_config.detect_thre = ADC_TMEP_LSB_PER_10DEGREE * ADC_TMEP_10DEGREE_PER_DBPWR;
     g_temp_detect_config.detect_intval = ADC_TMEP_DETECT_INTVAL_INIT;
     g_temp_detect_config.detect_intval_change = 0;
     g_temp_detect_config.dist_inital = ADC_TMEP_DIST_INTIAL_VAL;
-
-    g_temp_detect_config.last_xtal_val = (UINT32)(data);
-    #if (CFG_SOC_NAME != SOC_BK7231)
-    g_temp_detect_config.xtal_thre_val = ADC_XTAL_DIST_INTIAL_VAL;
-    g_temp_detect_config.xtal_init_val = sddev_control(SCTRL_DEV_NAME, CMD_SCTRL_GET_XTALH_CTUNE, NULL);
-    os_printf("xtal inital:%d, %d, %d\r\n", g_temp_detect_config.last_xtal_val,
-        g_temp_detect_config.xtal_thre_val, g_temp_detect_config.xtal_init_val);
-    #endif // (CFG_SOC_NAME != SOC_BK7231)
 
 	err = rtos_init_timer(&g_temp_detect_config.detect_timer, 
 							g_temp_detect_config.detect_intval * 1000, 

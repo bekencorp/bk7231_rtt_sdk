@@ -6,6 +6,7 @@
 typedef struct tmp_pwr_st {
     UINT8 mod;
     UINT8 pa;
+	UINT16 pwr_idx_shift;
 } TMP_PWR_ST, *TMP_PWR_PTR;
 
 extern void calibration_main(void);
@@ -63,6 +64,5 @@ extern UINT32 manual_cal_load_adc_cali_flash(void);
 extern void rwnx_cal_set_reg_mod_pa(UINT16 reg_mod, UINT16 reg_pa);
 extern void rwnx_cal_do_temp_detect(UINT16 cur_val, UINT16 thre, UINT16 *last);
 extern void rwnx_cal_set_lpfcap_iq(UINT32 lpfcap_i, UINT32 lpfcap_q);
-
-
+extern void rwnx_cal_initial_calibration(void);
 #endif // _BK7011_CAL_PUB_H_

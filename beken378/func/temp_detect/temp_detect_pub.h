@@ -26,17 +26,12 @@
 #define ADC_TMEP_XTAL_INIT                          (60)  // 60s
 #define ADC_TMEP_DETECT_INTVAL_CHANGE               (120) // 2 mins
 
-#define ADC_TMEP_DIST_INTIAL_VAL                    (0)
-#if (CFG_SOC_NAME == SOC_BK7231)
+#define ADC_TMEP_DIST_INTIAL_VAL                    (20)
 #define ADC_TMEP_LSB_PER_10DEGREE                   (24)
-#else
-#define ADC_TMEP_LSB_PER_10DEGREE                   (22)// 7231:24,7231U:22,
-#endif
+
 #define ADC_TMEP_10DEGREE_PER_DBPWR                 (1) // 7231:1,7231U:1,
 #define ADC_TEMP_VAL_MIN                            (50)
-#define ADC_TEMP_VAL_MAX                            (500)
-
-#define ADC_XTAL_DIST_INTIAL_VAL                    (70)
+#define ADC_TEMP_VAL_MAX                            (700)
 
 /*******************************************************************************
 * Function Declarations
